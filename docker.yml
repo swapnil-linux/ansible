@@ -1,0 +1,13 @@
+- name: Install and manage Docker 
+  hosts: centos
+  tasks:
+    - name: Install Docker
+      yum:
+        name: docker
+        state: latest
+    - name: manage Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
