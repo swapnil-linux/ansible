@@ -1,2 +1,15 @@
 ---
 # tasks file for docker
+- name: Install epel-release
+  yum:
+    name: epel-release
+    state: latest
+- name: Install Docker
+  yum:
+    name: docker
+    state: latest
+- name: manage Docker service
+  service:
+    name: docker
+    state: started
+    enabled: yes
