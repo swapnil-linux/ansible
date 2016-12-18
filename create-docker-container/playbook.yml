@@ -1,5 +1,6 @@
 ---
-- hosts: localhost
+- name: Create Docker Container
+  hosts: localhost
   connection: local  
   remote_user: root
   tasks:
@@ -27,13 +28,13 @@
         privileged: "{{ privileged }}"
     - name: Create Systemd Unit File as docker-{{ name }}.service
       template: src=systemd.j2 dest=/etc/systemd/system/docker-{{ name }}.service
+    - name: reload systemd daemon
+      command: systemctl daemon-reload 
     - name: Start & Enable docker-{{ name }} service
       service:
         name: docker-{{ name }}
         state: started
         enabled: yes
-    - name: relead systemd daemon
-      command: systemctl daemon-reload
     - name: check container status
       command: docker ps
       register: result
