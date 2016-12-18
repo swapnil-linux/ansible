@@ -1,0 +1,7 @@
+image: swapnillinux/apache-php
+name: myweb
+src_port: 8081
+dest_port: 80
+src_vol: /mnt/www
+dest_vol: /var/www/html
+privileged: true

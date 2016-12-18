@@ -1,0 +1,41 @@
+---
+- hosts: localhost
+  connection: local  
+  remote_user: root
+  tasks:
+    - name: include variables
+      include_vars: vars.yml
+    - name: Install python-docker on Red Hat based distribution
+      yum:
+       name: python-docker
+       enablerepo: extras
+       state: latest
+      when: ansible_os_family == 'RedHat'
+    - name: Install python-docker  on Debian based distribution
+      apt: 
+        name: python-docker
+        update_cache: yes
+      when: ansible_os_family == 'Debian' 
+    - name: Create Container
+      docker_container:
+        name: "{{ name }}"
+        image: "{{ image }}"
+        ports:
+          - "{{ src_port }}:{{ dest_port }}"
+        volumes:
+          - "{{ src_vol }}:{{ dest_vol }}"
+        privileged: "{{ privileged }}"
+    - name: Create Systemd Unit File as docker-{{ name }}.service
+      template: src=systemd.j2 dest=/etc/systemd/system/docker-{{ name }}.service
+    - name: Start & Enable docker-{{ name }} service
+      service:
+        name: docker-{{ name }}
+        state: started
+        enabled: yes
+    - name: relead systemd daemon
+      command: systemctl daemon-reload
+    - name: check container status
+      command: docker ps
+      register: result
+    - debug: var=result.stdout
+    
