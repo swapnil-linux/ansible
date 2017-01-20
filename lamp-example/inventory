@@ -1,0 +1,12 @@
+localhost ansible_connection=local
+
+[webservers]
+192.168.56.104
+
+[dbservers]
+192.168.56.103
+
+[myapp:children]
+webservers
+dbservers
+

@@ -1,0 +1,87 @@
+- name: preflight
+  hosts: myapp
+  remote_user: devops
+  become: true
+  tasks:
+    - name: install firewalld
+      yum: name=firewalld state=present
+
+    - name: firewalld service state
+      service: name=firewalld state=started enabled=yes
+
+- name: configure and deploy the webservers and application code
+  hosts: webservers
+  remote_user: devops
+  become: true
+  tasks:
+    - name: Install http and php etc
+      yum: name={{ item }} state=present
+      with_items:
+        - httpd
+        - php
+        - php-mysql
+        - git
+        - libsemanage-python
+        - libselinux-python
+    
+    - name: Allow firewall rule for port {{ httpd_port }}
+      firewalld:
+        port: "{{ httpd_port }}/tcp"
+        permanent: true
+        state: enabled
+        immediate: true
+    
+    - name: http service state
+      service: name=httpd state=started enabled=yes
+
+    - name: Configure SELinux to allow httpd to connect to remote database
+      seboolean: name=httpd_can_network_connect_db state=true persistent=yes
+
+    - name: Copy the code from repository
+      git: repo={{ repository }} dest=/var/www/html/
+    
+    - name: Creates the index.php file
+      template: src=index.php.j2 dest=/var/www/html/index.php
+
+- name: deploy MySQL and configure the databases
+  hosts: dbservers
+  remote_user: devops
+  become: true
+  tasks:
+    - name: Install Mysql package
+      yum: name={{ item }} state=installed
+      with_items:
+       - mariadb-server
+       - MySQL-python
+       - libselinux-python
+       - libsemanage-python
+    
+    - name: Configure SELinux to start mysql on any port
+      seboolean: name=mysql_connect_any state=true persistent=yes
+    
+    - name: Create Mysql configuration file
+      template: src=my.cnf.j2 dest=/etc/my.cnf
+      notify:
+      - restart mysql
+    
+    - name: Start Mysql Service
+      service: name=mariadb state=started enabled=yes
+    
+    - name: Allow firewall rule for port {{ mysql_port }}
+      firewalld:
+        port: "{{ mysql_port }}/tcp"
+        permanent: true
+        state: enabled
+        immediate: true
+    
+    - name: Create Application Database
+      mysql_db: name={{ dbname }} state=present
+    
+    - name: Create Application DB User
+      mysql_user: name={{ dbuser }} password={{ upassword }} priv=*.*:ALL host='%' state=present
+      
+  handlers:
+    - name: restart mysql
+      service: name=mariadb state=restarted
+
+

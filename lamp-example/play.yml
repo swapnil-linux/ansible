@@ -1,0 +1,9 @@
+- hosts:localhost
+  vars_prompt:
+    - name: "password"
+      prompt: "type passord?"
+  tasks:
+    - command: hostname
+    - pause: seconds=5
+    - command: uptime
+  
