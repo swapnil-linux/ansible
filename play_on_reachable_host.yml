@@ -1,0 +1,16 @@
+- name: check reachable hosts
+  hosts: all
+  gather_facts: no
+  tasks:
+    - command: ping -c1 {{ inventory_hostname }}
+      delegate_to: localhost
+      register: ping_result
+      ignore_errors: yes
+    - group_by: key=reachable
+      when: ping_result|success
+
+- name: your actual play
+  hosts: reachable
+  gather_facts: yes
+  tasks:
+    - debug: msg="this is {{ ansible_hostname }}"
