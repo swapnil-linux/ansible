@@ -1,6 +1,5 @@
 - hosts: localhost
   remote_user: devops
-  become: true
   connection: local
   tasks:
     - debug: msg="Hello World!!"
