@@ -2,7 +2,7 @@
 
 Here are some ansible playbooks and roles and other ansible releated stuf. Most them comes from my blog www.googlinux.com
 
-* create-docker-container - http://www.googlinux.com/creating-docker-container-using-ansible/
+* create-docker-container/ - http://www.googlinux.com/creating-docker-container-using-ansible/
 
 * docker.yml - http://www.googlinux.com/ansible-getting-started/
 
