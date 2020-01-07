@@ -7,7 +7,7 @@
       register: ping_result
       ignore_errors: yes
     - group_by: key=reachable
-      when: ping_result|success
+      when: ping_result is success
 
 - name: your actual play
   hosts: reachable
