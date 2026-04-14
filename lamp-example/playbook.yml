@@ -1,121 +1,131 @@
-- name: preflight
+---
+# LAMP Stack Deployment Playbook
+# Deploys a 3-tier web application: Apache + PHP (webservers) and MariaDB (dbservers)
+#
+# Requirements:
+#   ansible-galaxy collection install community.mysql
+
+- name: Preflight - install and start firewalld on all app servers
   hosts: myapp
-  remote_user: devops
   become: true
   tasks:
-    - name: install firewalld
-      yum:
+    - name: Install firewalld
+      ansible.builtin.dnf:
         name: firewalld
         state: present
 
-    - name: firewalld service state
-      service:
+    - name: Ensure firewalld is started and enabled
+      ansible.builtin.service:
         name: firewalld
         state: started
-        enabled: yes
+        enabled: true
 
-- name: configure and deploy the webservers and application code
+- name: Configure and deploy the web servers and application code
   hosts: webservers
-  remote_user: devops
   become: true
   tasks:
-    - name: Install http and php etc
-      yum:
-        name: "{{ item }}"
+    - name: Install Apache, PHP and dependencies
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - php
+          - php-mysqlnd
+          - git
+          - python3-libsemanage
+          - python3-libselinux
         state: present
-      with_items:
-        - httpd
-        - php
-        - php-mysql
-        - git
-        - libsemanage-python
-        - libselinux-python
-    
-    - name: Allow firewall rule for port {{ httpd_port }}
-      firewalld:
+
+    - name: Allow firewall rule for port {{ httpd_port }}/tcp
+      ansible.posix.firewalld:
         port: "{{ httpd_port }}/tcp"
         permanent: true
         state: enabled
         immediate: true
-    
-    - name: http service state
-      service:
+
+    - name: Ensure httpd service is started and enabled
+      ansible.builtin.service:
         name: httpd
         state: started
-        enabled: yes
+        enabled: true
 
     - name: Configure SELinux to allow httpd to connect to remote database
-      seboolean: 
+      ansible.posix.seboolean:
         name: httpd_can_network_connect_db
         state: true
-        persistent: yes
+        persistent: true
 
-    - name: Copy the code from repository
-      git:
+    - name: Clone application code from repository
+      ansible.builtin.git:
         repo: "{{ repository }}"
         dest: /var/www/html/
-    
-    - name: Creates the index.php file
-      template:
+        force: true
+
+    - name: Deploy index.php from template
+      ansible.builtin.template:
         src: index.php.j2
         dest: /var/www/html/index.php
+        owner: apache
+        group: apache
+        mode: '0644'
 
-- name: deploy MySQL and configure the databases
+- name: Deploy MariaDB and configure the database
   hosts: dbservers
-  remote_user: devops
   become: true
   tasks:
-    - name: Install Mysql package
-      yum:
-        name: "{{ item }}"
-        state: installed
-      with_items:
-       - mariadb-server
-       - MySQL-python
-       - libselinux-python
-       - libsemanage-python
-    
-    - name: Configure SELinux to start mysql on any port
-      seboolean:
+    - name: Install MariaDB and Python MySQL connector
+      ansible.builtin.dnf:
+        name:
+          - mariadb-server
+          - python3-PyMySQL
+          - python3-libselinux
+          - python3-libsemanage
+        state: present
+
+    - name: Configure SELinux to allow MySQL to bind on any port
+      ansible.posix.seboolean:
         name: mysql_connect_any
         state: true
-        persistent: yes
-    
-    - name: Create Mysql configuration file
-      template:
+        persistent: true
+
+    - name: Deploy MySQL configuration file
+      ansible.builtin.template:
         src: my.cnf.j2
         dest: /etc/my.cnf
-      notify:
-      - restart mysql
-    
-    - name: Start Mysql Service
-      service:
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart MariaDB
+
+    - name: Ensure MariaDB service is started and enabled
+      ansible.builtin.service:
         name: mariadb
         state: started
-        enabled: yes
-    
-    - name: Allow firewall rule for port {{ mysql_port }}
-      firewalld:
+        enabled: true
+
+    - name: Allow firewall rule for port {{ mysql_port }}/tcp
+      ansible.posix.firewalld:
         port: "{{ mysql_port }}/tcp"
         permanent: true
         state: enabled
         immediate: true
-    
-    - name: Create Application Database
-      mysql_db:
+
+    - name: Create application database
+      community.mysql.mysql_db:
         name: "{{ dbname }}"
         state: present
-    
-    - name: Create Application DB User
-      mysql_user:
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: Create application database user
+      community.mysql.mysql_user:
         name: "{{ dbuser }}"
-        password: "{{ upassword }}" 
-        priv: "*.*:ALL host='%' state=present"
-      
+        password: "{{ upassword }}"
+        priv: "{{ dbname }}.*:ALL"
+        host: "%"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
   handlers:
-    - name: restart mysql
-      service:
+    - name: Restart MariaDB
+      ansible.builtin.service:
         name: mariadb
         state: restarted
-
-

@@ -1,15 +1,33 @@
 ---
 # tasks file for docker
-- name: Install epel-release
-  yum:
-    name: epel-release
-    state: latest
-- name: Install Docker
-  yum:
-    name: docker
-    state: latest
-- name: manage Docker service
-  service:
+# Installs Docker CE from the official Docker repository on RHEL/CentOS/AlmaLinux/Rocky
+
+- name: Install required packages for Docker repository setup
+  ansible.builtin.dnf:
+    name:
+      - yum-utils
+      - device-mapper-persistent-data
+      - lvm2
+    state: present
+
+- name: Add Docker CE repository
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: '0644'
+
+- name: Install Docker CE
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.service:
     name: docker
     state: started
-    enabled: yes
+    enabled: true
