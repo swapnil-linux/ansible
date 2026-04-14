@@ -1,13 +1,15 @@
-- name: Install and manage Docker 
+---
+- name: Install and manage Docker
   hosts: centos
+  become: true
   tasks:
     - name: Install Docker
-      yum:
+      ansible.builtin.yum:
         name: docker
-        state: latest
-    - name: manage Docker service
-      service:
+        state: present
+
+    - name: Ensure Docker service is started and enabled
+      ansible.builtin.service:
         name: docker
         state: started
-        enabled: yes
-
+        enabled: true

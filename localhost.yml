@@ -1,5 +1,9 @@
-- hosts: localhost
+---
+- name: Hello World on localhost
+  hosts: localhost
   become: true
   connection: local
   tasks:
-    - debug: msg="Hello World!!"
+    - name: Print Hello World message
+      ansible.builtin.debug:
+        msg: "Hello World!!"

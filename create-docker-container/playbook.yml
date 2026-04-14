@@ -1,24 +1,25 @@
 ---
-- name: Create Docker Container
+- name: Create a Docker container and manage it with systemd
   hosts: localhost
-  connection: local  
-  remote_user: root
+  connection: local
+  become: true
+  vars_files:
+    - vars.yml
   tasks:
-    - name: include variables
-      include_vars: vars.yml
-    - name: Install python-docker on Red Hat based distribution
-      yum:
-       name: python-docker
-       enablerepo: extras
-       state: latest
+    - name: Install python3-docker on Red Hat based distributions
+      ansible.builtin.yum:
+        name: python3-docker
+        state: present
       when: ansible_os_family == 'RedHat'
-    - name: Install python-docker  on Debian based distribution
-      apt: 
-        name: python-docker
-        update_cache: yes
-      when: ansible_os_family == 'Debian' 
-    - name: Create Container
-      docker_container:
+
+    - name: Install python3-docker on Debian based distributions
+      ansible.builtin.apt:
+        name: python3-docker
+        update_cache: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Create Docker container
+      community.docker.docker_container:
         name: "{{ name }}"
         image: "{{ image }}"
         ports:
@@ -26,17 +27,29 @@
         volumes:
           - "{{ src_vol }}:{{ dest_vol }}"
         privileged: "{{ privileged }}"
-    - name: Create Systemd Unit File as docker-{{ name }}.service
-      template: src=systemd.j2 dest=/etc/systemd/system/docker-{{ name }}.service
-    - name: reload systemd daemon
-      command: systemctl daemon-reload 
-    - name: Start & Enable docker-{{ name }} service
-      service:
+        state: started
+        restart_policy: always
+
+    - name: Create systemd unit file for docker-{{ name }}
+      ansible.builtin.template:
+        src: systemd.j2
+        dest: /etc/systemd/system/docker-{{ name }}.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Start and enable docker-{{ name }} service via systemd
+      ansible.builtin.systemd:
         name: docker-{{ name }}
         state: started
-        enabled: yes
-    - name: check container status
-      command: docker ps
+        enabled: true
+        daemon_reload: true
+
+    - name: Check container status
+      ansible.builtin.command: docker ps
       register: result
-    - debug: var=result.stdout
-    
+      changed_when: false
+
+    - name: Show container status
+      ansible.builtin.debug:
+        var: result.stdout

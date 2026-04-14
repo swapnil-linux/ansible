@@ -1,16 +1,28 @@
-- name: check reachable hosts
+---
+# This playbook demonstrates how to run a play only on reachable hosts.
+# Play 1: Pings every host in inventory and groups the reachable ones.
+# Play 2: Runs the actual work only on hosts that responded.
+
+- name: Check which hosts are reachable
   hosts: all
-  gather_facts: no
+  gather_facts: false
   tasks:
-    - command: ping -c1 {{ inventory_hostname }}
+    - name: Ping host to test reachability
+      ansible.builtin.command: ping -c1 {{ inventory_hostname }}
       delegate_to: localhost
       register: ping_result
-      ignore_errors: yes
-    - group_by: key=reachable
+      ignore_errors: true
+      changed_when: false
+
+    - name: Add reachable hosts to the 'reachable' group
+      ansible.builtin.group_by:
+        key: reachable
       when: ping_result is success
 
-- name: your actual play
+- name: Run your actual play (only on reachable hosts)
   hosts: reachable
-  gather_facts: yes
+  gather_facts: true
   tasks:
-    - debug: msg="this is {{ ansible_hostname }}"
+    - name: Print hostname
+      ansible.builtin.debug:
+        msg: "This is {{ ansible_hostname }}"

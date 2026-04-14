@@ -1,2 +1,6 @@
 ---
 # defaults file for docker
+# Override these variables in your playbook or inventory as needed.
+
+# Docker repository URL (change for different OS variants if needed)
+docker_repo_url: https://download.docker.com/linux/centos/docker-ce.repo
